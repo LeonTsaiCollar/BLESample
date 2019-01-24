@@ -1,2 +1,2 @@
 # BLESample
-Koltin编写Android与外设硬件设备通过BLE进行通信的Demo
+Kotlin编写的Android与外设硬件设备通过BLE进行通信的Demo
