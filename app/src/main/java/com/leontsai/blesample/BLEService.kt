@@ -8,7 +8,9 @@ import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.content.Intent
 import android.os.Binder
+import android.os.Handler
 import android.os.IBinder
+import android.os.Message
 
 class BLEService : Service() {
     private val mBinder = LocalBinder()
@@ -47,6 +49,12 @@ class BLEService : Service() {
 
     }
 
+    private val mHandler=Handler{
+        when(it.what){
+
+        }
+    }
+
 
     fun initBleInternal(): Boolean {
         if (mBluetoothManager == null) {
@@ -67,8 +75,10 @@ class BLEService : Service() {
                         return
                     }
 
-                    var device = result.device
-//                    if (device.name.startsWith(GattAttributes.))
+                    val device = result.device
+                    if (device.name.startsWith(GATTATTRIBUTES_DEVICE_NAME)){
+                        mBluetoothDevice=device
+                    }
                 }
 
                 override fun onScanFailed(errorCode: Int) {
