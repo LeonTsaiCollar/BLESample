@@ -5,11 +5,14 @@ import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.content.Context
+import android.os.Handler
+import android.os.Message
 import java.util.*
 
 class BLEHelper private constructor() {
 
     private var mContext: Context? = null
+    lateinit var mHandler: Handler
 
     lateinit var mResendRunnable: ResendRunnable
 
@@ -19,8 +22,9 @@ class BLEHelper private constructor() {
             BLEHelper()
         }
 
-        fun initBLE(context: Context): Boolean {
+        fun initBLE(context: Context, handler: Handler): Boolean {
             INSTANCE.mContext = context
+            INSTANCE.mHandler = handler
             return INSTANCE.initBleInternal()
         }
     }
@@ -33,14 +37,27 @@ class BLEHelper private constructor() {
     private var mBluetoothDevice: BluetoothDevice? = null
     @Volatile
     private var mBluetoothDeviceFound = false
+    @Volatile
+    private var mDeviceConnected = false
 
     private val mBluetoothGattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
             super.onConnectionStateChange(gatt, status, newState)
+
+            if (mDeviceConnected) return
+
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                mDeviceConnected = true
+                mBluetoothGatt?.discoverServices()
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                mDeviceConnected = false
+                mHandler.post { connect() }
+            }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
             super.onServicesDiscovered(gatt, status)
+            mHandler.sendEmptyMessage(BLEService.DISCOVERY)
         }
 
         override fun onCharacteristicWrite(
@@ -49,16 +66,21 @@ class BLEHelper private constructor() {
             status: Int
         ) {
             super.onCharacteristicWrite(gatt, characteristic, status)
+            mHandler.sendEmptyMessage(BLEService.WRITE_SUCCESS)
         }
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?) {
             super.onCharacteristicChanged(gatt, characteristic)
+            val msg = Message.obtain()
+            msg.what = BLEService.RECEIVE_DEVICE_MSG
+            msg.obj = characteristic?.value
+            mHandler.sendMessage(msg)
         }
 
         override fun onDescriptorWrite(gatt: BluetoothGatt?, descriptor: BluetoothGattDescriptor?, status: Int) {
             super.onDescriptorWrite(gatt, descriptor, status)
+            mHandler.sendEmptyMessage(BLEService.DESCRIPTION_WRITE)
         }
-
     }
 
     fun initBleInternal(): Boolean {
@@ -155,5 +177,13 @@ class BLEHelper private constructor() {
             UUID.fromString(GATTATTRIBUTES_SERVICE_OPEN_DOOR)
             , UUID.fromString(GATTATTRIBUTES_CHARACTERISTIC_SEND_COMMAND), command
         )
+    }
+
+    fun closeGatt() {
+        if (mBluetoothGatt == null) return
+        mBluetoothDevice = null
+        mBluetoothGatt?.disconnect()
+        mBluetoothGatt?.close()
+        mBluetoothGatt = null
     }
 }
