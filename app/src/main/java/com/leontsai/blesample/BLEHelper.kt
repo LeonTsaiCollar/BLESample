@@ -11,14 +11,17 @@ class BLEHelper private constructor() {
 
     private var mContext: Context? = null
 
+    lateinit var mResendRunnable: ResendRunnable
+
     companion object {
 
-        private val INSTANCE: BLEHelper by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        val INSTANCE: BLEHelper by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
             BLEHelper()
         }
 
-        fun initBLE(context: Context) {
+        fun initBLE(context: Context): Boolean {
             INSTANCE.mContext = context
+            return INSTANCE.initBleInternal()
         }
     }
 
@@ -108,7 +111,7 @@ class BLEHelper private constructor() {
         return true
     }
 
-    private fun setCharacteristicNotification(serviceUUID: UUID, characteristicUUID: UUID): Boolean {
+    fun setCharacteristicNotification(serviceUUID: UUID, characteristicUUID: UUID): Boolean {
         val bluetoothGattService = mBluetoothGatt?.getService(serviceUUID)
 
         if (bluetoothGattService == null) return false
@@ -131,7 +134,7 @@ class BLEHelper private constructor() {
         return result
     }
 
-    private fun writeCharacteristic(serviceUUID: UUID, characteristicUUID: UUID, value: ByteArray): Boolean {
+    fun writeCharacteristic(serviceUUID: UUID, characteristicUUID: UUID, value: ByteArray): Boolean {
         val bluetoothGattService = mBluetoothGatt?.getService(serviceUUID)
 
         if (bluetoothGattService == null) return false
@@ -145,4 +148,12 @@ class BLEHelper private constructor() {
     }
 
 
+    fun sendCommand() {
+        val command = byteArrayOf(0xd4.toByte(), 0xa4.toByte())
+        mResendRunnable = ResendRunnable(command)
+        writeCharacteristic(
+            UUID.fromString(GATTATTRIBUTES_SERVICE_OPEN_DOOR)
+            , UUID.fromString(GATTATTRIBUTES_CHARACTERISTIC_SEND_COMMAND), command
+        )
+    }
 }

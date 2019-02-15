@@ -66,11 +66,25 @@ class BLEService : Service() {
                 FOUND_DEVICE -> {
                     scanDevice(false)
                     mBluetoothDeviceFound = true
-                    mHandler.postDelayed(Runnable { connect() }, 200)
+                    mHandler.postDelayed({ connect() }, 200)
                 }
                 DISCOVERY -> {
-
+                    setCharacteristicNotification(
+                        UUID.fromString(GATTATTRIBUTES_SERVICE_OPEN_DOOR)
+                        , UUID.fromString(GATTATTRIBUTES_CHARACTERISTIC_RETURN_COMMAND)
+                    )
                 }
+                DESCRIPTION_WRITE -> {
+                    BLEHelper.INSTANCE.sendCommand()
+                    mHandler.postDelayed(BLEHelper.INSTANCE.mResendRunnable, 500)
+                }
+                WRITE -> {
+                    if (!BLEHelper.INSTANCE.mResendRunnable.mIsSent) {
+                        BLEHelper.INSTANCE.mResendRunnable.mIsSent = true
+                        mHandler.removeCallbacks(BLEHelper.INSTANCE.mResendRunnable)
+                    }
+                }
+
 
                 else -> {
 
@@ -81,88 +95,24 @@ class BLEService : Service() {
     }
 
 
-    fun initBleInternal(): Boolean {
-        if (mBluetoothManager == null) {
-            mBluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        }
-        if (mBluetoothManager == null) return false
-
-        if (mBluetoothAdapter == null)
-            mBluetoothAdapter = mBluetoothManager?.adapter
-        if (mBluetoothAdapter == null) return false
-        if (mBluetoothLeScanner == null) mBluetoothLeScanner = mBluetoothAdapter?.bluetoothLeScanner
-        if (mBluetoothLeScanner == null) return false
-        if (mScanCallback == null)
-            mScanCallback = object : ScanCallback() {
-                override fun onScanResult(callbackType: Int, result: ScanResult?) {
-                    super.onScanResult(callbackType, result)
-
-                    if (mBluetoothDeviceFound || result == null || result.device == null || result.scanRecord == null || result.device.name == null) {
-                        return
-                    }
-
-                    val device = result.device
-                    if (device.name.startsWith(GATTATTRIBUTES_DEVICE_NAME)) {
-                        mBluetoothDevice = device
-                    }
-                }
-
-                override fun onScanFailed(errorCode: Int) {
-                    super.onScanFailed(errorCode)
-                }
-            }
-        return mBluetoothAdapter!!.isEnabled
+    fun initBle(context: Context): Boolean {
+        return BLEHelper.initBLE(context)
     }
 
     fun scanDevice(enable: Boolean) {
-        if (enable) {
-            mBluetoothLeScanner?.startScan(mScanCallback)
-        } else {
-            mBluetoothLeScanner?.stopScan(mScanCallback)
-        }
+        BLEHelper.INSTANCE.scanDevice(enable)
     }
 
     fun connect(): Boolean {
-        if (mBluetoothDevice == null) return false
-        mBluetoothGatt = mBluetoothDevice?.connectGatt(this, false, mBluetoothGattCallback)
-        if (mBluetoothGatt == null) return false
-        return true
+        return BLEHelper.INSTANCE.connect()
     }
 
     private fun setCharacteristicNotification(serviceUUID: UUID, characteristicUUID: UUID): Boolean {
-        val bluetoothGattService = mBluetoothGatt?.getService(serviceUUID)
-
-        if (bluetoothGattService == null) return false
-
-        val bluetoothGattCharacteristic = bluetoothGattService.getCharacteristic(characteristicUUID)
-
-        if (bluetoothGattCharacteristic == null) return false
-
-        val descriptors = bluetoothGattCharacteristic.descriptors
-
-        if (descriptors == null) return false
-
-        var result = mBluetoothGatt?.setCharacteristicNotification(bluetoothGattCharacteristic, true) ?: false
-
-        descriptors.forEach {
-            it.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-            result = result && (mBluetoothGatt?.writeDescriptor(it) ?: false)
-        }
-
-        return result
+        return BLEHelper.INSTANCE.setCharacteristicNotification(serviceUUID, characteristicUUID)
     }
 
     private fun writeCharacteristic(serviceUUID: UUID, characteristicUUID: UUID, value: ByteArray): Boolean {
-        val bluetoothGattService = mBluetoothGatt?.getService(serviceUUID)
-
-        if (bluetoothGattService == null) return false
-
-        val bluetoothGattCharacteristic = bluetoothGattService.getCharacteristic(characteristicUUID)
-
-        if (bluetoothGattCharacteristic == null) return false
-
-        bluetoothGattCharacteristic.value = value
-        return mBluetoothGatt?.writeCharacteristic(bluetoothGattCharacteristic) ?: false
+        return BLEHelper.INSTANCE.writeCharacteristic(serviceUUID, characteristicUUID, value)
     }
 
 
