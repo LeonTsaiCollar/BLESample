@@ -1,2 +1,2 @@
 # BLESample
-Kotlin编写的Android与外设硬件设备通过BLE进行通信的Demo
+Kotlin编写的Android与外设硬件设备通过BLE进行通信的Demo，对系统BLE4.0相关API进行封装，加入了容错机制，提高BLE连接和传输数据的成功率
