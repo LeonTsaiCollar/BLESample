@@ -1,10 +1,6 @@
 package com.leontsai.blesample
 
 import android.app.Service
-import android.bluetooth.*
-import android.bluetooth.le.BluetoothLeScanner
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.content.Intent
 import android.os.Binder
@@ -52,7 +48,8 @@ class BLEService : Service() {
                 }
 
                 RECEIVE_DEVICE_MSG -> {
-                    TODO("根据硬件返回的结果判断此次开门是否成功")
+                    //TODO("根据硬件返回的结果判断此次开门是否成功")
+                    stopSelf()
                 }
 
                 else -> {

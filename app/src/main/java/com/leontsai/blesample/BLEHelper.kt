@@ -106,6 +106,7 @@ class BLEHelper private constructor() {
                     val device = result.device
                     if (device.name.startsWith(GATTATTRIBUTES_DEVICE_NAME)) {
                         mBluetoothDevice = device
+                        mHandler.sendEmptyMessage(BLEService.FOUND_DEVICE)
                     }
                 }
 
